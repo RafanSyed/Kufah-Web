@@ -1,0 +1,17 @@
+/* src/app/globals.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can add any other global styles here if you want */
+
+/* app/globals.css */
+html, body {
+  font-family: 'Comfortaa', sans-serif;
+}
+
+
+/* Removed the conflicting 'a' styles. 
+  The Tailwind classes in your component will now work as intended.
+*/

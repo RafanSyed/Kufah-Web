@@ -1,0 +1,244 @@
+'use client'
+
+import React, { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import ApiService from "../../services/ApiService";
+import { Home } from "lucide-react";
+
+type ClassItem = {
+  id: number;
+  name: string;
+  attendanceId: number;
+  status: "Absent" | "In Person" | "Online" | "Recording";
+  token: string;
+};
+
+const AttendancePage: React.FC = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const linkToken = searchParams.get("token");
+
+  const [studentId, setStudentId] = useState<number | null>(null);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [attendanceDate, setAttendanceDate] = useState<string>("");
+
+  // Track window width
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Responsive sizes
+  const getResponsive = () => {
+    if (windowWidth <= 640) {
+      return {
+        titleFont: "1.8rem",
+        homeBtn: { padding: "8px 20px", fontSize: "18px", minWidth: "110px", minHeight: "50px" },
+        homeIcon: { width: "28px", height: "28px" },
+        classBox: { fontSize: "16px", width: "200px", padding: "12px 0" },
+        attBtn: { fontSize: "16px", padding: "10px 20px" },
+      };
+    } else if (windowWidth <= 1024) {
+      return {
+        titleFont: "2.2rem",
+        homeBtn: { padding: "12px 28px", fontSize: "22px", minWidth: "140px", minHeight: "60px" },
+        homeIcon: { width: "40px", height: "40px" },
+        classBox: { fontSize: "20px", width: "240px", padding: "14px 0" },
+        attBtn: { fontSize: "18px", padding: "14px 28px" },
+      };
+    } else {
+      return {
+        titleFont: "2.8rem",
+        homeBtn: { padding: "15px 35px", fontSize: "26px", minWidth: "170px", minHeight: "70px" },
+        homeIcon: { width: "48px", height: "48px" },
+        classBox: { fontSize: "24px", width: "300px", padding: "18px 0" },
+        attBtn: { fontSize: "20px", padding: "18px 36px" },
+      };
+    }
+  };
+
+  const sizes = getResponsive();
+
+  useEffect(() => {
+    if (!linkToken) {
+      setError("Missing link token");
+      setLoading(false);
+      return;
+    }
+
+    const initializeAttendance = async () => {
+      try {
+        const response = await ApiService.get(`/attendance/link/${linkToken}`);
+        const rows = response.rows;
+
+        if (!rows || rows.length === 0) {
+          setError("No attendance found for this link");
+          setLoading(false);
+          return;
+        }
+
+        setStudentId(response.student_id);
+
+        const todayStr = new Date().toISOString().split("T")[0];
+        const todaysRows = rows.filter(
+          (row: any) => row.date.split("T")[0] === todayStr
+        );
+        setAttendanceDate(todayStr); // store the date to show in header
+
+        const classesWithNames: ClassItem[] = await Promise.all(
+          todaysRows.map(async (row: any) => {
+            const cls = await ApiService.get(`/classes/${row.class_id}`);
+            return {
+              id: row.class_id,
+              name: cls.name,
+              attendanceId: row.id,
+              status: row.status,
+              token: row.token,
+            };
+          })
+        );
+
+        setClasses(classesWithNames);
+        setLoading(false);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to load attendance");
+        setLoading(false);
+      }
+    };
+
+    initializeAttendance();
+  }, [linkToken]);
+
+  const markAttendance = async (classId: number, status: ClassItem["status"]) => {
+    try {
+      const cls = classes.find((c) => c.id === classId);
+      if (!cls || !cls.token) return;
+
+      const updated = await ApiService.put(`/attendance/token/${cls.token}`, { status });
+
+      setClasses((prev) =>
+        prev.map((c) =>
+          c.id === classId ? { ...c, status: updated.status } : c
+        )
+      );
+    } catch (err: any) {
+      console.error("Failed to update attendance:", err);
+    }
+  };
+
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (error) return <div className="p-4 text-red-600">{error}</div>;
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto relative">
+      {/* Header + Home Button */}
+      <div className="relative w-full mb-12">
+        <h1
+          style={{
+            fontFamily: "Comfortaa",
+            fontWeight: "bold",
+            fontSize: sizes.titleFont,
+            color: "#191970",
+            textAlign: "center",
+          }}
+        >
+          {attendanceDate ? `TODAY'S ATTENDANCE` : "ATTENDANCE"}
+        </h1>
+
+        <button
+          onClick={() => {
+            if (linkToken) router.push(`/pages/studentDashboard?token=${linkToken}`);
+          }}
+          className="flex items-center gap-4 bg-[#191970] rounded-full shadow-xl hover:bg-blue-900 transition-all duration-200 ease-in-out"
+          style={{
+            // Conditionally apply absolute positioning based on screen size
+            position: windowWidth > 640 ? "absolute" : "static",
+            top: windowWidth > 640 ? "-10px" : "auto",
+            right: windowWidth > 640 ? "20px" : "auto",
+            // Add margin for mobile layout
+            marginTop: windowWidth <= 640 ? "1rem" : "0",
+            ...sizes.homeBtn,
+            color: "white",
+            // Center the button horizontally on small screens
+            marginLeft: windowWidth <= 640 ? "auto" : "0",
+            marginRight: windowWidth <= 640 ? "auto" : "0",
+          }}
+        >
+          <Home style={{ ...sizes.homeIcon, color: "white" }} />
+          <span style={{ fontWeight: "bold", color: "white" }}>Home</span>
+        </button>
+      </div>
+
+      {/* Attendance Cards */}
+      {classes.length === 0 ? (
+        <div className="text-center text-gray-600 p-4">No classes for today.</div>
+      ) : (
+        <div className="flex flex-col gap-10">
+          {classes.map((cls) => (
+            <div
+              key={cls.id}
+              className="flex items-center justify-between p-6"
+              style={{
+                border: "3px solid #191970",
+                borderRadius: "8px",
+                fontFamily: "Comfortaa, sans-serif",
+                // Use flex-wrap only on small screens
+                flexWrap: windowWidth <= 640 ? "wrap" : "nowrap",
+              }}
+            >
+              {/* Class Name Box */}
+              <div
+                style={{
+                  backgroundColor: "#191970",
+                  color: "white",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  // Conditionally apply full width on small screens
+                  width: windowWidth <= 640 ? "100%" : sizes.classBox.width,
+                  padding: sizes.classBox.padding,
+                  fontSize: sizes.classBox.fontSize,
+                }}
+              >
+                {cls.name}
+              </div>
+
+              {/* Attendance Buttons */}
+              <div className="flex flex-1 justify-around ml-6 flex-wrap gap-2">
+                {["In Person", "Online", "Recording"].map((statusOption) => (
+                  <button
+                    key={statusOption}
+                    onClick={() =>
+                      markAttendance(cls.id, statusOption as ClassItem["status"])
+                    }
+                    style={{
+                      borderRadius: "9999px",
+                      fontWeight: "700",
+                      cursor: "pointer",
+                      border: "3px solid #191970",
+                      color:
+                        cls.status === statusOption ? "#FFD700" : "#191970",
+                      backgroundColor:
+                        cls.status === statusOption ? "#191970" : "transparent",
+                      transition: "all 0.2s ease-in-out",
+                      ...sizes.attBtn,
+                    }}
+                  >
+                    {statusOption}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AttendancePage;

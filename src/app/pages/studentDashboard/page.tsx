@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import StudentTable from "../../components/StudentTable";
 import ApiService from "../../services/ApiService";
 
-const Page: React.FC = () => {
+// Create a separate component for the main content that uses useSearchParams
+const StudentDashboardContent: React.FC = () => {
   const searchParams = useSearchParams();
   const linkToken = searchParams.get("token");
   const [studentId, setStudentId] = useState<number | null>(null);
@@ -38,7 +40,6 @@ const Page: React.FC = () => {
       }
     };
 
-
     fetchStudent();
   }, [linkToken]);
 
@@ -53,6 +54,25 @@ const Page: React.FC = () => {
       </h1>
       <StudentTable studentId={studentId} />
     </main>
+  );
+};
+
+// Loading fallback component
+const LoadingFallback: React.FC = () => (
+  <main className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
+    <h1 className="font-comfortaa text-4xl md:text-5xl font-semibold text-[#191970] text-center mb-8">
+      STUDENT DASHBOARD
+    </h1>
+    <div className="p-4 text-center">Loading student dashboard...</div>
+  </main>
+);
+
+// Main component that wraps StudentDashboardContent in Suspense
+const Page: React.FC = () => {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <StudentDashboardContent />
+    </Suspense>
   );
 };
 

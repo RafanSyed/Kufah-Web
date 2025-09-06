@@ -1,6 +1,7 @@
 'use client'
+export const dynamic = "force-dynamic";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ApiService from "../../services/ApiService";
 import { Home } from "lucide-react";
@@ -13,7 +14,8 @@ type ClassItem = {
   token: string;
 };
 
-const AttendancePage: React.FC = () => {
+// Create a separate component for the main content that uses useSearchParams
+const AttendanceContent: React.FC = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const linkToken = searchParams.get("token");
@@ -238,6 +240,22 @@ const AttendancePage: React.FC = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// Loading fallback component
+const LoadingFallback: React.FC = () => (
+  <div className="p-6 max-w-4xl mx-auto">
+    <div className="text-center">Loading attendance...</div>
+  </div>
+);
+
+// Main component that wraps AttendanceContent in Suspense
+const AttendancePage: React.FC = () => {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AttendanceContent />
+    </Suspense>
   );
 };
 

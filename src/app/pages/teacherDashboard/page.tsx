@@ -1,5 +1,6 @@
 "use client";
 
+export const dynamic = "force-dynamic";
 import * as React from "react";
 import { Tabs, Tab, Box, Button } from "@mui/material";
 import ClassTabsGrid from "../../components/TeacherTable";

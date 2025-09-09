@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Box, Button, useMediaQuery, useTheme, Typography, Collapse, IconButton } from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { ExpandMore, ExpandLess } from "@mui/icons-material";
 import ApiService from "../services/ApiService";
 import AttendanceModal from "./ViewDatesModal";
@@ -81,7 +81,7 @@ const StudentClassGrid: React.FC<Props> = ({ studentId }) => {
     fetchStudentClasses();
   }, [studentId]);
 
-  const baseColumns: GridColDef[] = [
+  const baseColumns: GridColDef<ClassRow>[] = [
     { field: "className", headerName: "CLASS", flex: 1 },
     { field: "absent", headerName: "ABSENT", type: "number", flex: 0.5 },
     { field: "totalGrade", headerName: "TOTAL %", type: "number", flex: 0.5 },
@@ -89,7 +89,7 @@ const StudentClassGrid: React.FC<Props> = ({ studentId }) => {
       field: "view",
       headerName: "VIEW DATES",
       flex: 1,
-      renderCell: (params) => (
+      renderCell: (params: GridRenderCellParams<ClassRow>) => (
         <Button
           variant="contained"
           size={isSmallScreen ? "small" : "medium"}
@@ -113,13 +113,48 @@ const StudentClassGrid: React.FC<Props> = ({ studentId }) => {
     },
   ];
 
-  const extraColumns: GridColDef[] = [
+  const extraColumns: GridColDef<ClassRow>[] = [
     { field: "inPerson", headerName: "IN PERSON", type: "number", flex: 0.5 },
     { field: "online", headerName: "ONLINE", type: "number", flex: 0.5 },
     { field: "recording", headerName: "RECORDING", type: "number", flex: 0.5 },
   ];
 
-  const columns = isSmallScreen ? baseColumns : [...baseColumns, ...extraColumns];
+  const columns: GridColDef<ClassRow>[] = isSmallScreen
+    ? baseColumns
+    : [
+        { field: "className", headerName: "CLASS", flex: 1 },
+        { field: "inPerson", headerName: "IN PERSON", type: "number", flex: 0.5 },
+        { field: "online", headerName: "ONLINE", type: "number", flex: 0.5 },
+        { field: "recording", headerName: "RECORDING", type: "number", flex: 0.5 },
+        { field: "absent", headerName: "ABSENT", type: "number", flex: 0.5 },
+        { field: "totalGrade", headerName: "TOTAL %", type: "number", flex: 0.5 },
+        {
+          field: "view",
+          headerName: "VIEW DATES",
+          flex: 1,
+          renderCell: (params: GridRenderCellParams<ClassRow>) => (
+            <Button
+              variant="contained"
+              size="medium"
+              sx={{
+                fontSize: "0.85rem",
+                fontWeight: "bold",
+                textTransform: "none",
+                backgroundColor: "#191970",
+                "&:hover": { backgroundColor: "#000080" },
+                padding: "5px 12px",
+                borderRadius: "6px",
+              }}
+              onClick={() => {
+                setSelectedClassId(params.row.classId);
+                setModalOpen(true);
+              }}
+            >
+              View
+            </Button>
+          ),
+        },
+      ];
 
   if (loading) return <p>Loading...</p>;
   if (!classes.length) return <p>No classes found for this student.</p>;
@@ -140,7 +175,12 @@ const StudentClassGrid: React.FC<Props> = ({ studentId }) => {
             }}
           >
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="subtitle2" fontWeight="bold" color="#191970" fontSize="0.85rem">
+              <Typography
+                variant="subtitle2"
+                fontWeight="bold"
+                color="#191970"
+                fontSize="0.85rem"
+              >
                 {cls.className} (<Box component="span" fontWeight="bold">{cls.totalGrade}%</Box>)
               </Typography>
               <IconButton

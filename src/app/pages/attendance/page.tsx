@@ -1,4 +1,4 @@
-'use client'
+'use client';
 export const dynamic = "force-dynamic";
 
 import React, { useEffect, useState, Suspense } from "react";
@@ -14,20 +14,19 @@ type ClassItem = {
   token: string;
 };
 
-// Create a separate component for the main content that uses useSearchParams
 const AttendanceContent: React.FC = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const linkToken = searchParams.get("token");
+  const link = searchParams.get("token"); // the token from the URL query
 
-  const [studentId, setStudentId] = useState<number | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attendanceDate, setAttendanceDate] = useState<string>("");
 
-  // Track window width
-  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -35,7 +34,6 @@ const AttendanceContent: React.FC = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Responsive sizes
   const getResponsive = () => {
     if (windowWidth <= 640) {
       return {
@@ -67,7 +65,7 @@ const AttendanceContent: React.FC = () => {
   const sizes = getResponsive();
 
   useEffect(() => {
-    if (!linkToken) {
+    if (!link) {
       setError("Missing link token");
       setLoading(false);
       return;
@@ -75,25 +73,30 @@ const AttendanceContent: React.FC = () => {
 
     const initializeAttendance = async () => {
       try {
-        const response = await ApiService.get(`/attendance/link/${linkToken}`);
-        const rows = response.rows;
+        // Extract token safely from a full link if needed
+        let token = link;
+        try {
+          const parsed = new URL(link);
+          token = parsed.searchParams.get("token") || link;
+        } catch (err) {
+          // If link is already a token, ignore
+        }
 
-        if (!rows || rows.length === 0) {
+        const response = await ApiService.get(`/attendance/email/${encodeURIComponent(token)}`);
+        const records = response.records;
+
+        if (!records || records.length === 0) {
           setError("No attendance found for this link");
           setLoading(false);
           return;
         }
 
-        setStudentId(response.student_id);
-
-        const todayStr = new Date().toISOString().split("T")[0];
-        const todaysRows = rows.filter(
-          (row: any) => row.date.split("T")[0] === todayStr
-        );
-        setAttendanceDate(todayStr); // store the date to show in header
+        // Use the date from the first record for header
+        const firstDate = new Date(records[0].date);
+        setAttendanceDate(`${firstDate.getMonth() + 1}/${firstDate.getDate()}/${firstDate.getFullYear()}`);
 
         const classesWithNames: ClassItem[] = await Promise.all(
-          todaysRows.map(async (row: any) => {
+          records.map(async (row: any) => {
             const cls = await ApiService.get(`/classes/${row.class_id}`);
             return {
               id: row.class_id,
@@ -115,14 +118,14 @@ const AttendanceContent: React.FC = () => {
     };
 
     initializeAttendance();
-  }, [linkToken]);
+  }, [link]);
 
   const markAttendance = async (classId: number, status: ClassItem["status"]) => {
     try {
       const cls = classes.find((c) => c.id === classId);
       if (!cls || !cls.token) return;
 
-      const updated = await ApiService.put(`/attendance/token/${cls.token}`, { status });
+      const updated = await ApiService.put(`/attendance/${cls.attendanceId}`, { status });
 
       setClasses((prev) =>
         prev.map((c) =>
@@ -139,7 +142,6 @@ const AttendanceContent: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto relative">
-      {/* Header + Home Button */}
       <div className="relative w-full mb-12">
         <h1
           style={{
@@ -150,24 +152,19 @@ const AttendanceContent: React.FC = () => {
             textAlign: "center",
           }}
         >
-          {attendanceDate ? `TODAY'S ATTENDANCE` : "ATTENDANCE"}
+          {attendanceDate ? `${attendanceDate} Attendance` : "ATTENDANCE"}
         </h1>
 
         <button
-          onClick={() => {
-            if (linkToken) router.push(`/pages/studentDashboard?token=${linkToken}`);
-          }}
+          onClick={() => router.push(`/pages/studentDashboard?token=${link}`)}
           className="flex items-center gap-4 bg-[#191970] rounded-full shadow-xl hover:bg-blue-900 transition-all duration-200 ease-in-out"
           style={{
-            // Conditionally apply absolute positioning based on screen size
             position: windowWidth > 640 ? "absolute" : "static",
             top: windowWidth > 640 ? "-10px" : "auto",
             right: windowWidth > 640 ? "20px" : "auto",
-            // Add margin for mobile layout
             marginTop: windowWidth <= 640 ? "1rem" : "0",
             ...sizes.homeBtn,
             color: "white",
-            // Center the button horizontally on small screens
             marginLeft: windowWidth <= 640 ? "auto" : "0",
             marginRight: windowWidth <= 640 ? "auto" : "0",
           }}
@@ -177,9 +174,8 @@ const AttendanceContent: React.FC = () => {
         </button>
       </div>
 
-      {/* Attendance Cards */}
       {classes.length === 0 ? (
-        <div className="text-center text-gray-600 p-4">No classes for today.</div>
+        <div className="text-center text-gray-600 p-4">No classes found.</div>
       ) : (
         <div className="flex flex-col gap-10">
           {classes.map((cls) => (
@@ -190,18 +186,15 @@ const AttendanceContent: React.FC = () => {
                 border: "3px solid #191970",
                 borderRadius: "8px",
                 fontFamily: "Comfortaa, sans-serif",
-                // Use flex-wrap only on small screens
                 flexWrap: windowWidth <= 640 ? "wrap" : "nowrap",
               }}
             >
-              {/* Class Name Box */}
               <div
                 style={{
                   backgroundColor: "#191970",
                   color: "white",
                   fontWeight: "bold",
                   textAlign: "center",
-                  // Conditionally apply full width on small screens
                   width: windowWidth <= 640 ? "100%" : sizes.classBox.width,
                   padding: sizes.classBox.padding,
                   fontSize: sizes.classBox.fontSize,
@@ -210,7 +203,6 @@ const AttendanceContent: React.FC = () => {
                 {cls.name}
               </div>
 
-              {/* Attendance Buttons */}
               <div className="flex flex-1 justify-around ml-6 flex-wrap gap-2">
                 {["In Person", "Online", "Recording"].map((statusOption) => (
                   <button
@@ -243,20 +235,16 @@ const AttendanceContent: React.FC = () => {
   );
 };
 
-// Loading fallback component
 const LoadingFallback: React.FC = () => (
   <div className="p-6 max-w-4xl mx-auto">
     <div className="text-center">Loading attendance...</div>
   </div>
 );
 
-// Main component that wraps AttendanceContent in Suspense
-const AttendancePage: React.FC = () => {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <AttendanceContent />
-    </Suspense>
-  );
-};
+const AttendancePage: React.FC = () => (
+  <Suspense fallback={<LoadingFallback />}>
+    <AttendanceContent />
+  </Suspense>
+);
 
 export default AttendancePage;

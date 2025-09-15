@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Tabs, Tab, Box, useMediaQuery } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import EditStudentModal from "./EditStudentModal";
 
 type StudentRow = {
   id: number;
@@ -29,13 +30,29 @@ const columns: GridColDef[] = [
 
 const ClassTabsGrid: React.FC<Props> = ({ classes }) => {
   const [selectedTab, setSelectedTab] = React.useState(0);
+  const [selectedStudentId, setSelectedStudentId] = React.useState<number | null>(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setSelectedTab(newValue);
   };
 
-  // Detect mobile screen
   const isMobile = useMediaQuery("(max-width:640px)");
+
+  const handleRowClick = (params: any) => {
+    setSelectedStudentId(params.row.id); // row.id comes from DataGrid row
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedStudentId(null);
+  };
+
+  const refreshStudents = () => {
+    // reload class data if needed
+    console.log("✅ Student updated, refresh class list here if necessary");
+  };
 
   return (
     <Box>
@@ -54,20 +71,20 @@ const ClassTabsGrid: React.FC<Props> = ({ classes }) => {
           "& .Mui-selected": { color: "#191970" },
           mb: 0,
         }}
-      >
-        {/* Example if you want class tabs */}
-        {/* {classes.map((cls, index) => <Tab key={index} label={cls.className} />)} */}
-      </Tabs>
+      />
 
       <Box sx={{ width: "100%", overflowX: "auto" }}>
         <DataGrid
           rows={classes[selectedTab].students}
           columns={columns}
           pageSizeOptions={[5, 10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: isMobile ? 3 : 5, page: 0 } } }}
+          initialState={{
+            pagination: { paginationModel: { pageSize: isMobile ? 3 : 5, page: 0 } },
+          }}
           rowHeight={isMobile ? 35 : 50}
+          onRowClick={handleRowClick}
           sx={{
-            minWidth: 600, // allows horizontal scroll on small screens
+            minWidth: 600,
             border: "2px solid #191970",
             "& .MuiDataGrid-columnHeaders": {
               fontFamily: "'Comfortaa'",
@@ -87,9 +104,18 @@ const ClassTabsGrid: React.FC<Props> = ({ classes }) => {
               borderTop: "2px solid #191970",
               fontSize: isMobile ? "0.7rem" : "0.9rem",
             },
+            cursor: "pointer",
           }}
         />
       </Box>
+
+      {/* Student Edit Modal */}
+      <EditStudentModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        studentId={selectedStudentId}
+        onUpdated={refreshStudents}
+      />
     </Box>
   );
 };

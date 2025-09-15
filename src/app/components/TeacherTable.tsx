@@ -1,8 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Tabs, Tab, Box, useMediaQuery } from "@mui/material";
+import {
+  Tabs,
+  Tab,
+  Box,
+  useMediaQuery,
+  IconButton,
+  Menu,
+  MenuItem,
+} from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditStudentModal from "./EditStudentModal";
+import EditClassModal from "./EditClassModal";
 
 type StudentRow = {
   id: number;
@@ -16,6 +27,7 @@ type StudentRow = {
 
 type Props = {
   classes: any[];
+  onRefresh?: () => void; // optional: trigger reload from parent
 };
 
 const columns: GridColDef[] = [
@@ -27,21 +39,69 @@ const columns: GridColDef[] = [
   { field: "totalGrade", headerName: "TOTAL GRADE", type: "number", flex: 1, minWidth: 120 },
 ];
 
-const ClassTabsGrid: React.FC<Props> = ({ classes }) => {
+const ClassTabsGrid: React.FC<Props> = ({ classes, onRefresh }) => {
   const [selectedTab, setSelectedTab] = React.useState(0);
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setSelectedTab(newValue);
+  // Student modal state
+  const [selectedStudentId, setSelectedStudentId] = React.useState<number | null>(null);
+  const [studentModalOpen, setStudentModalOpen] = React.useState(false);
+
+  // Class modal state
+  const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [selectedClassId, setSelectedClassId] = React.useState<number | null>(null);
+  const [classModalOpen, setClassModalOpen] = React.useState(false);
+
+  const isMobile = useMediaQuery("(max-width:640px)");
+
+  // Handle student row click
+  const handleRowClick = (params: any) => {
+    setSelectedStudentId(params.row.id);
+    setStudentModalOpen(true);
   };
 
-  // Detect mobile screen
-  const isMobile = useMediaQuery("(max-width:640px)");
+  const handleCloseStudentModal = () => {
+    setStudentModalOpen(false);
+    setSelectedStudentId(null);
+  };
+
+  const handleStudentUpdated = () => {
+    console.log("✅ Student updated");
+    onRefresh?.();
+  };
+
+  // Handle class 3-dot menu
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    classId: number
+  ) => {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget);
+    setSelectedClassId(classId);
+  };
+
+  const handleMenuClose = () => setMenuAnchor(null);
+
+  const handleEditClassClick = () => {
+    setClassModalOpen(true);
+    handleMenuClose();
+  };
+
+  const handleCloseClassModal = () => {
+    setClassModalOpen(false);
+    setSelectedClassId(null);
+  };
+
+  const handleClassUpdated = () => {
+    console.log("✅ Class updated");
+    onRefresh?.();
+  };
 
   return (
     <Box>
+      {/* Tabs with 3-dot menu per class */}
       <Tabs
         value={selectedTab}
-        onChange={handleTabChange}
+        onChange={(_, newValue) => setSelectedTab(newValue)}
         variant="scrollable"
         scrollButtons="auto"
         sx={{
@@ -55,19 +115,42 @@ const ClassTabsGrid: React.FC<Props> = ({ classes }) => {
           mb: 0,
         }}
       >
-        {/* Example if you want class tabs */}
-        {/* {classes.map((cls, index) => <Tab key={index} label={cls.className} />)} */}
+        {classes.map((cls, index) => (
+          <Tab
+            key={cls.id}
+            label={
+              <Box display="flex" alignItems="center">
+                {cls.name}
+                <IconButton
+                  size="small"
+                  sx={{ ml: 1 }}
+                  onClick={(e) => handleMenuOpen(e, cls.id)}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            }
+          />
+        ))}
       </Tabs>
 
+      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
+        <MenuItem onClick={handleEditClassClick}>Edit Class</MenuItem>
+      </Menu>
+
+      {/* Students DataGrid */}
       <Box sx={{ width: "100%", overflowX: "auto" }}>
         <DataGrid
           rows={classes[selectedTab].students}
           columns={columns}
           pageSizeOptions={[5, 10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: isMobile ? 3 : 5, page: 0 } } }}
+          initialState={{
+            pagination: { paginationModel: { pageSize: isMobile ? 3 : 5, page: 0 } },
+          }}
           rowHeight={isMobile ? 35 : 50}
+          onRowClick={handleRowClick}
           sx={{
-            minWidth: 600, // allows horizontal scroll on small screens
+            minWidth: 600,
             border: "2px solid #191970",
             "& .MuiDataGrid-columnHeaders": {
               fontFamily: "'Comfortaa'",
@@ -87,9 +170,26 @@ const ClassTabsGrid: React.FC<Props> = ({ classes }) => {
               borderTop: "2px solid #191970",
               fontSize: isMobile ? "0.7rem" : "0.9rem",
             },
+            cursor: "pointer",
           }}
         />
       </Box>
+
+      {/* Student Edit Modal */}
+      <EditStudentModal
+        open={studentModalOpen}
+        onClose={handleCloseStudentModal}
+        studentId={selectedStudentId}
+        onUpdated={handleStudentUpdated}
+      />
+
+      {/* Class Edit Modal */}
+      <EditClassModal
+        open={classModalOpen}
+        onClose={handleCloseClassModal}
+        classId={selectedClassId}
+        onUpdated={handleClassUpdated}
+      />
     </Box>
   );
 };

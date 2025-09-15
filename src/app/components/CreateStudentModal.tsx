@@ -7,7 +7,13 @@ import {
   DialogActions,
   Button,
   IconButton,
-  Tooltip
+  Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText
 } from "@mui/material";
 import { UploadFile as UploadFileIcon } from "@mui/icons-material";
 import * as XLSX from "xlsx";
@@ -24,15 +30,43 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
   const [lastName, setLastName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
+  const [classes, setClasses] = React.useState<any[]>([]);
+  const [selectedClasses, setSelectedClasses] = React.useState<number[]>([]);
+
+  // Fetch all classes on open
+  React.useEffect(() => {
+    if (open) {
+      ApiService.get("/classes")
+        .then((data) => setClasses(data))
+        .catch((err) => console.error("❌ Error fetching classes:", err));
+    }
+  }, [open]);
 
   const handleCreate = async () => {
     try {
-      await ApiService.post("/students", {
+      // 1. Create the student
+      const student = await ApiService.post("/students", {
         firstName,
         lastName,
         email,
         phone,
       });
+
+      // Some APIs return { id: ..., ... }, others return { data: { id: ... } }
+      const studentId = student?.id || student?.data?.id;
+      if (!studentId) {
+        console.error("❌ No studentId returned from /students API:", student);
+        return;
+      }
+
+      // 2. Assign classes if any were selected
+      if (selectedClasses.length > 0) {
+        await ApiService.post("/student-classes/student/bulk", {
+          studentId,
+          classIds: selectedClasses,
+        });
+      }
+
       resetForm();
       onClose();
       onCreated();
@@ -41,11 +75,13 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
     }
   };
 
+
   const resetForm = () => {
     setFirstName("");
     setLastName("");
     setEmail("");
     setPhone("");
+    setSelectedClasses([]);
   };
 
   // 📂 Handle Excel upload
@@ -57,8 +93,6 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-      // Get raw rows (header row + data rows)
       const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
       if (rows.length < 2) {
@@ -66,7 +100,6 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
         return;
       }
 
-      // Normalize headers (lowercase, trim spaces)
       const headers = rows[0].map((h: string) =>
         h?.toString().toLowerCase().trim()
       );
@@ -77,10 +110,8 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
           obj[headers[i]] = value;
         });
         return {
-          firstName:
-            obj["firstname"] || obj["first name"] || obj["fname"] || "",
-          lastName:
-            obj["lastname"] || obj["last name"] || obj["lname"] || "",
+          firstName: obj["firstname"] || obj["first name"] || obj["fname"] || "",
+          lastName: obj["lastname"] || obj["last name"] || obj["lname"] || "",
           email: obj["email"] || "",
           phone: obj["phone"] ? String(obj["phone"]) : "",
         };
@@ -93,7 +124,6 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
         return;
       }
 
-      // Call bulk API
       await ApiService.post("/students/bulk", { students });
 
       onClose();
@@ -150,6 +180,30 @@ export default function CreateStudentModal({ open, onClose, onCreated }: Props) 
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
+
+        {/* Multi-select for classes */}
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="classes-label">Assign Classes</InputLabel>
+          <Select
+            labelId="classes-label"
+            multiple
+            value={selectedClasses}
+            onChange={(e) => setSelectedClasses(e.target.value as number[])}
+            renderValue={(selected) =>
+              classes
+                .filter((cls) => selected.includes(cls.id))
+                .map((cls) => cls.name)
+                .join(", ")
+            }
+          >
+            {classes.map((cls) => (
+              <MenuItem key={cls.id} value={cls.id}>
+                <Checkbox checked={selectedClasses.includes(cls.id)} />
+                <ListItemText primary={cls.name} />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </DialogContent>
 
       <DialogActions>

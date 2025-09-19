@@ -14,6 +14,8 @@ import {
   MenuItem,
   Checkbox,
   ListItemText,
+  Typography, // 🆕
+  Link,       // 🆕
 } from "@mui/material";
 import ApiService from "../services/ApiService";
 
@@ -38,6 +40,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
   const [allClasses, setAllClasses] = React.useState<any[]>([]);
   const [selectedClasses, setSelectedClasses] = React.useState<number[]>([]);
 
+  const [dashboardLink, setDashboardLink] = React.useState<string | null>(null); // 🆕 state
+
   // Fetch student + classes
   React.useEffect(() => {
     const fetchStudentAndClasses = async () => {
@@ -61,6 +65,24 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
           `/student-classes/student/${studentId}`
         );
         setSelectedClasses(studentClassesRes.map((sc: any) => sc.classId));
+
+        // 4. 🆕 Get one attendance row to extract token
+        const attendanceRes = await ApiService.get(
+          `/attendance/student/${studentId}`
+        );
+        if (attendanceRes?.length > 0) {
+          const emailLink = attendanceRes[0].email_link;
+          if (emailLink) {
+            const token = new URL(emailLink).searchParams.get("token");
+            if (token) {
+              const frontendUrl =
+                process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+              setDashboardLink(
+                `${frontendUrl}/pages/studentDashboard?token=${token}`
+              );
+            }
+          }
+        }
       } catch (err) {
         console.error("❌ Error fetching student/classes:", err);
       }
@@ -150,6 +172,19 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
             ))}
           </Select>
         </FormControl>
+
+        {/* 🆕 Dashboard link */}
+        {dashboardLink && (
+          <TextField
+            margin="normal"
+            label="Student Dashboard Link"
+            fullWidth
+            value={dashboardLink}
+            InputProps={{
+              readOnly: true,
+            }}
+          />
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>

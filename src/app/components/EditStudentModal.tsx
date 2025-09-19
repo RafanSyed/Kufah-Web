@@ -77,6 +77,9 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
             if (token) {
               const frontendUrl =
                 process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+
+              console.log("Frontend URL:", process.env.NEXT_PUBLIC_FRONTEND_URL);
+
               setDashboardLink(
                 `${frontendUrl}/pages/studentDashboard?token=${token}`
               );

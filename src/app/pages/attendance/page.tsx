@@ -24,6 +24,8 @@ const AttendanceContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [attendanceDate, setAttendanceDate] = useState<string>("");
 
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
   const [windowWidth, setWindowWidth] = useState<number>(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
@@ -132,6 +134,10 @@ const AttendanceContent: React.FC = () => {
           c.id === classId ? { ...c, status: updated.status } : c
         )
       );
+
+      // ✅ success popup
+      setSuccessMessage("Attendance Updated");
+      setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
       console.error("Failed to update attendance:", err);
     }
@@ -142,6 +148,26 @@ const AttendanceContent: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto relative">
+      {/* ✅ success popup */}
+      {successMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            backgroundColor: "#d1fae5",
+            color: "#065f46",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            fontWeight: "bold",
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+            zIndex: 9999,
+          }}
+        >
+          ✅ {successMessage}
+        </div>
+      )}
+
       <div className="relative w-full mb-12">
         <h1
           style={{

@@ -58,17 +58,17 @@ export default function HomePage() {
           </Link>
 
           {/* Student Questions */}
-          <Link href="/pages/studentQuestions" className="group">
+          <Link href="/pages/studentManagement" className="group">
             <button
               type="button"
               className="w-full rounded-2xl bg-white shadow-md border border-slate-200 px-5 py-4 text-left flex items-center justify-between transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
               <div>
                 <p className="text-sm font-semibold text-kufahBlue">
-                  Student Questions
+                  Student Managment
                 </p>
                 <p className="text-xs text-slate-500">
-                  Review and answer questions submitted by students.
+                  Review student questions and post annoucements
                 </p>
               </div>
               <span className="text-kufahBlue transition-transform group-hover:translate-x-1">

@@ -1,7 +1,8 @@
-'use client'
+"use client";
 
 export const dynamic = "force-dynamic";
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const TeacherLogin: React.FC = () => {
@@ -9,15 +10,6 @@ const TeacherLogin: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile screen
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    handleResize(); // initial check
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,109 +18,82 @@ const TeacherLogin: React.FC = () => {
     const correctPassword = process.env.NEXT_PUBLIC_TEACHER_PASSWORD;
 
     if (username === correctUsername && password === correctPassword) {
-      router.push("/pages/teacherDashboard");
+      setError("");
+      router.push("/pages/dashboard");
     } else {
       setError("Invalid username or password");
     }
   };
 
-  // Sizes depending on mobile/desktop
-  const headingSize = isMobile ? "2rem" : "4rem";
-  const inputHeight = isMobile ? "40px" : "50px";
-  const fontSize = isMobile ? "14px" : "16px";
-  const buttonHeight = isMobile ? "40px" : "50px";
-  const marginBottom = isMobile ? "10px" : "30px";
-
   return (
-    <div 
-      className="flex items-center justify-center min-h-screen bg-gray-100"
-      style={{ fontFamily: 'Comfortaa, sans-serif', padding: isMobile ? '10px' : '0' }}
-    >
-      <form
-        onSubmit={handleLogin}
-        style={{
-          backgroundColor: '#fff',
-          padding: isMobile ? '20px' : '32px',
-          borderRadius: '12px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          width: isMobile ? '90vw' : '400px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center', // center the inputs
-        }}
-      >
-        <h2
-          style={{
-            fontSize: headingSize,
-            fontWeight: "bold",
-            color: "#191970",
-            textAlign: "center",
-            marginBottom: marginBottom
-          }}
-        >
-          Teacher Login
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-[#f3f6ff] to-[#dfe7ff] px-4">
+      <div className="w-full max-w-5xl grid gap-10 md:grid-cols-[1.1fr,1fr] items-center">
 
-        <label style={{ color: '#191970', fontSize, display: 'block', marginBottom: '5px', alignSelf: 'flex-start' }}>Username</label>
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          style={{
-            width: '90%', // slightly shorter than form
-            maxWidth: '320px', // optional max width
-            height: inputHeight,
-            fontSize,
-            padding: '0 10px',
-            marginBottom: marginBottom,
-            borderRadius: '8px',
-            border: '2px solid #d1d5db',
-            outline: 'none'
-          }}
-        />
-
-        <label style={{ color: '#191970', fontSize, display: 'block', marginBottom: '5px', alignSelf: 'flex-start' }}>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: '90%',
-            maxWidth: '320px',
-            height: inputHeight,
-            fontSize,
-            padding: '0 10px',
-            marginBottom: marginBottom,
-            borderRadius: '8px',
-            border: '2px solid #d1d5db',
-            outline: 'none'
-          }}
-        />
-
-
-        {error && (
-          <div style={{ color: 'red', fontSize: '14px', textAlign: 'center', marginBottom: marginBottom }}>
-            {error}
+        {/* Right: Login card */}
+        <section className="bg-white/90 backdrop-blur-xl shadow-xl rounded-3xl border border-slate-100 px-6 py-7 md:px-8 md:py-9 w-full max-w-md mx-auto">
+          <div className="mb-6 text-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-kufahBlue">
+              Admin Login
+            </h2>
+            <p className="mt-2 text-xs md:text-sm text-slate-500">
+              Use your Admin username and password to access Kufah information.
+            </p>
           </div>
-        )}
 
-        <button
-          type="submit"
-          style={{
-            width: '100%',
-            height: buttonHeight,
-            backgroundColor: '#191970',
-            color: 'white',
-            fontSize,
-            fontWeight: 600,
-            borderRadius: '8px',
-            cursor: 'pointer',
-            marginBottom: isMobile ? '20px' : '260px'
-          }}
-        >
-          Login
-        </button>
-      </form>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="username"
+                className="block text-xs md:text-sm font-medium text-kufahBlue"
+              >
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full h-11 md:h-12 rounded-xl border border-slate-200 bg-white px-3 md:px-4 text-sm md:text-base text-slate-900 outline-none transition focus:border-kufahBlue focus:ring-2 focus:ring-kufahBlue/30"
+                autoComplete="username"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="password"
+                className="block text-xs md:text-sm font-medium text-kufahBlue"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-11 md:h-12 rounded-xl border border-slate-200 bg-white px-3 md:px-4 text-sm md:text-base text-slate-900 outline-none transition focus:border-kufahBlue focus:ring-2 focus:ring-kufahBlue/30"
+                autoComplete="current-password"
+              />
+            </div>
+
+            {error && (
+              <div className="text-xs md:text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full h-11 md:h-12 rounded-xl bg-kufahBlue text-white text-sm md:text-base font-semibold shadow-md shadow-kufahBlue/20 transition hover:bg-[#141458] hover:shadow-lg hover:shadow-kufahBlue/30 active:scale-[0.99]"
+            >
+              Log in to Dashboard
+            </button>
+
+            <p className="text-[11px] md:text-xs text-center text-slate-500 mt-1">
+              Need help? Contact your Kufah administrator.
+            </p>
+          </form>
+        </section>
+      </div>
     </div>
   );
 };

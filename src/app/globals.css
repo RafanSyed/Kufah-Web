@@ -1,17 +1,23 @@
-/* src/app/globals.css */
+/* 1. Import Comfortaa font for Kufah */
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 2. Import Tailwind v4 */
+@import "tailwindcss";
 
-/* You can add any other global styles here if you want */
+/* 3. Tailwind v4 CSS-first config: define custom theme tokens */
+@theme {
+  /* Font family */
+  --font-comfortaa: "Comfortaa", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
 
-/* app/globals.css */
-html, body {
-  font-family: 'Comfortaa', sans-serif;
+  /* Brand color (Kufah dark blue) */
+  --color-kufahBlue: #191970;
 }
 
+/* 4. (Optional) any of your own global styles can go below */
 
-/* Removed the conflicting 'a' styles. 
-  The Tailwind classes in your component will now work as intended.
-*/
+html,
+body {
+  margin: 0;
+  padding: 0;
+}

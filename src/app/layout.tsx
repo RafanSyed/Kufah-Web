@@ -26,19 +26,14 @@ export default function RootLayout({
                 </div>
                 <div className="flex flex-col leading-tight">
                   <span className="text-sm md:text-base font-semibold text-kufahBlue">
-                    Kufah Admin Dashboard
+                    Kufah Dashboard
                   </span>
                   <span className="text-[11px] md:text-xs text-slate-500">
                     Simple, dashboard for your needs
                   </span>
                 </div>
               </div>
-
-              {/* Right: small tag */}
-              <div className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] md:text-xs text-slate-600">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Teacher portal online</span>
-              </div>
+              
             </div>
           </header>
 

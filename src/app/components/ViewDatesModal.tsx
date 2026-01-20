@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ApiService from "../services/ApiService";
 
 interface Attendance {
@@ -19,7 +19,28 @@ interface AttendanceModalProps {
   onSave?: () => void;
 }
 
+const BLUE = "#191970";
+const GOLD = "#FFD700";
+
 const STATUS_OPTIONS = ["In Person", "Online", "Recording", "Absent"] as const;
+
+const statusColor = (status: (typeof STATUS_OPTIONS)[number]) => {
+  switch (status) {
+    case "In Person":
+      return "#10b981";
+    case "Online":
+      return "#3b82f6";
+    case "Recording":
+      return "#8b5cf6";
+    case "Absent":
+      return "#ef4444";
+    default:
+      return BLUE;
+  }
+};
+
+const formatMMDD = (dateStr: string) =>
+  new Date(dateStr).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" });
 
 const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: AttendanceModalProps) => {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -28,14 +49,26 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
+  const isMobile = windowWidth <= 640;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       fetchAttendance();
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const fetchAttendance = async () => {
@@ -53,7 +86,7 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
   };
 
   const handleStatusChange = (rowId: number, newStatus: Attendance["status"]) => {
-    const updated = attendance.map(row => row.id === rowId ? { ...row, status: newStatus } : row);
+    const updated = attendance.map((row) => (row.id === rowId ? { ...row, status: newStatus } : row));
     setAttendance(updated);
     setHasChanges(true);
   };
@@ -61,12 +94,14 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
   const handleSave = async () => {
     setSaving(true);
     try {
-      const savePromises = attendance.map(async row => {
-        const original = originalAttendance.find(orig => orig.id === row.id);
+      const savePromises = attendance.map(async (row) => {
+        const original = originalAttendance.find((orig) => orig.id === row.id);
         if (original && original.status !== row.status) {
           return ApiService.put(`/attendance/${row.id}`, { status: row.status });
         }
+        return Promise.resolve();
       });
+
       await Promise.all(savePromises);
 
       setOriginalAttendance(JSON.parse(JSON.stringify(attendance)));
@@ -74,8 +109,8 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
 
       if (onSave) onSave();
     } catch (err) {
-      console.error('Error saving attendance:', err);
-      alert('Error saving changes. Please try again.');
+      console.error("Error saving attendance:", err);
+      alert("Error saving changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -86,113 +121,301 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
     onClose();
   };
 
+  const changedCount = useMemo(() => {
+    let count = 0;
+    for (const row of attendance) {
+      const orig = originalAttendance.find((o) => o.id === row.id);
+      if (orig && orig.status !== row.status) count++;
+    }
+    return count;
+  }, [attendance, originalAttendance]);
+
   if (!isOpen) return null;
 
   return (
-    <>
+    <div
+      onClick={handleClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(2, 6, 23, 0.55)",
+        display: "flex",
+        alignItems: isMobile ? "flex-end" : "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        padding: isMobile ? "10px" : "20px",
+      }}
+    >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px',
+          backgroundColor: "white",
+          borderRadius: isMobile ? "18px" : "16px",
+          width: "100%",
+          maxWidth: "860px",
+          maxHeight: isMobile ? "92vh" : "80vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          border: "1px solid rgba(25,25,112,0.12)",
+          boxShadow: "0 18px 60px rgba(0,0,0,0.22)",
         }}
-        onClick={handleClose}
       >
+        {/* Header */}
         <div
           style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: '800px',
-            maxHeight: '80vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+            padding: isMobile ? "14px 14px" : "18px 20px",
+            borderBottom: "1px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+            background: "linear-gradient(180deg, rgba(25,25,112,0.06), rgba(255,255,255,1))",
           }}
-          onClick={e => e.stopPropagation()}
         >
-          {/* Header */}
-          <div style={{
-            padding: '24px',
-            borderBottom: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#191970', margin: 0 }}>
+          <div>
+            <h2
+              style={{
+                fontSize: isMobile ? "18px" : "22px",
+                fontWeight: 800,
+                color: BLUE,
+                margin: 0,
+                letterSpacing: 0.2,
+              }}
+            >
               Attendance Details
             </h2>
-            <button onClick={handleClose} style={{ fontSize: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}>×</button>
+            <div style={{ fontSize: isMobile ? 12 : 13, color: "#64748b", marginTop: 4 }}>
+              Update daily statuses. Changes will be saved together.
+            </div>
           </div>
 
-          {/* Content */}
-          <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Loading...</div>
-            ) : attendance.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>No attendance records found.</div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #d1d5db' }}>
+          <button
+            onClick={handleClose}
+            aria-label="Close"
+            style={{
+              width: isMobile ? 40 : 42,
+              height: isMobile ? 40 : 42,
+              borderRadius: 9999,
+              border: "1px solid rgba(25,25,112,0.18)",
+              backgroundColor: "white",
+              cursor: "pointer",
+              color: "#475569",
+              fontSize: 22,
+              lineHeight: 1,
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: isMobile ? "12px" : "18px", flex: 1, overflowY: "auto" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "36px 0", color: "#64748b" }}>Loading...</div>
+          ) : attendance.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "36px 0", color: "#64748b" }}>
+              No attendance records found.
+            </div>
+          ) : isMobile ? (
+            // ✅ Mobile: cards
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {attendance.map((row) => (
+                <div
+                  key={row.id}
+                  style={{
+                    border: "1px solid rgba(25,25,112,0.16)",
+                    borderRadius: 16,
+                    backgroundColor: "white",
+                    boxShadow: "0 10px 18px rgba(25,25,112,0.06)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      borderBottom: "1px solid rgba(25,25,112,0.10)",
+                      backgroundColor: "rgba(25,25,112,0.03)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 900, color: BLUE, fontSize: 14 }}>
+                      Date: {formatMMDD(row.date)}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 900,
+                        padding: "6px 10px",
+                        borderRadius: 9999,
+                        backgroundColor: row.status === "Absent" ? "#fee2e2" : "rgba(25,25,112,0.06)",
+                        color: row.status === "Absent" ? "#b91c1c" : BLUE,
+                        border: "1px solid rgba(25,25,112,0.14)",
+                      }}
+                    >
+                      {row.status}
+                    </span>
+                  </div>
+
+                  <div style={{ padding: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {STATUS_OPTIONS.map((opt) => {
+                      const active = row.status === opt;
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => handleStatusChange(row.id, opt)}
+                          style={{
+                            flex: "1 1 46%",
+                            padding: "11px 10px",
+                            borderRadius: 9999,
+                            fontWeight: 900,
+                            fontSize: 14,
+                            cursor: "pointer",
+                            border: `2px solid ${active ? BLUE : "rgba(25,25,112,0.20)"}`,
+                            color: active ? GOLD : BLUE,
+                            backgroundColor: active ? BLUE : "rgba(25,25,112,0.04)",
+                            boxShadow: active ? "0 10px 18px rgba(25,25,112,0.18)" : "none",
+                            transition: "transform 0.08s ease, box-shadow 0.15s ease",
+                          }}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ padding: "10px 12px", fontSize: 12, color: "#64748b" }}>
+                    Tip: Tap one option above.
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            // ✅ Desktop: table
+            <div
+              style={{
+                border: "1px solid rgba(25,25,112,0.18)",
+                borderRadius: 16,
+                overflow: "hidden",
+                boxShadow: "0 10px 18px rgba(25,25,112,0.06)",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#191970' }}>
-                    <th style={{ padding: '12px', color: 'white', textAlign: 'left' }}>Date</th>
-                    <th style={{ padding: '12px', color: 'white', textAlign: 'right' }}>Status</th>
+                  <tr style={{ backgroundColor: BLUE }}>
+                    <th style={{ padding: "12px 14px", color: "white", textAlign: "left" }}>Date</th>
+                    <th style={{ padding: "12px 14px", color: "white", textAlign: "right" }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {attendance.map((row, idx) => (
-                    <tr key={row.id} style={{ backgroundColor: idx % 2 === 0 ? '#f9fafb' : 'white', borderTop: '1px solid #d1d5db' }}>
-                      <td style={{ padding: '12px', textAlign: 'left', color: '#374151' }}>
-                        {new Date(row.date).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" })}
+                    <tr
+                      key={row.id}
+                      style={{
+                        backgroundColor: idx % 2 === 0 ? "#f8fafc" : "white",
+                        borderTop: "1px solid rgba(25,25,112,0.10)",
+                      }}
+                    >
+                      <td style={{ padding: "12px 14px", textAlign: "left", color: "#0f172a", fontWeight: 700 }}>
+                        {formatMMDD(row.date)}
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        {STATUS_OPTIONS.map(statusOption => (
-                          <button
-                            key={statusOption}
-                            onClick={() => handleStatusChange(row.id, statusOption)}
-                            style={{
-                              marginLeft: '8px',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              border: 'none',
-                              color: row.status === statusOption ? 'white' : '#191970',
-                              backgroundColor: row.status === statusOption
-                                ? statusOption === 'In Person' ? '#10b981'
-                                : statusOption === 'Online' ? '#3b82f6'
-                                : statusOption === 'Recording' ? '#8b5cf6'
-                                : '#ef4444'
-                                : '#e5e7eb'
-                            }}
-                          >
-                            {statusOption}
-                          </button>
-                        ))}
+
+                      <td style={{ padding: "12px 14px", textAlign: "right" }}>
+                        {STATUS_OPTIONS.map((opt) => {
+                          const active = row.status === opt;
+                          return (
+                            <button
+                              key={opt}
+                              onClick={() => handleStatusChange(row.id, opt)}
+                              style={{
+                                marginLeft: 8,
+                                padding: "8px 12px",
+                                borderRadius: 9999,
+                                fontWeight: 900,
+                                cursor: "pointer",
+                                border: active ? `2px solid ${BLUE}` : "2px solid rgba(25,25,112,0.20)",
+                                color: active ? GOLD : BLUE,
+                                backgroundColor: active ? BLUE : "rgba(25,25,112,0.04)",
+                                boxShadow: active ? "0 10px 18px rgba(25,25,112,0.18)" : "none",
+                                transition: "transform 0.08s ease, box-shadow 0.15s ease",
+                              }}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: isMobile ? "12px" : "16px 20px",
+            borderTop: "1px solid #e5e7eb",
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            justifyContent: "space-between",
+            alignItems: isMobile ? "stretch" : "center",
+            gap: 10,
+            backgroundColor: "rgba(25,25,112,0.02)",
+          }}
+        >
+          <div style={{ color: hasChanges ? "#b45309" : "#64748b", fontSize: 13, fontWeight: 700 }}>
+            {hasChanges ? `• Unsaved changes (${changedCount})` : "No changes"}
           </div>
 
-          {/* Footer */}
-          <div style={{ padding: '24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {hasChanges && <span style={{ color: '#f59e0b', fontSize: '14px' }}>• You have unsaved changes</span>}
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={handleClose} disabled={saving} style={{ backgroundColor: '#6b7280', color: 'white', padding: '10px 24px', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>Cancel</button>
-              <button onClick={handleSave} disabled={!hasChanges || saving} style={{ backgroundColor: hasChanges ? '#10b981' : '#d1d5db', color: hasChanges ? 'white' : '#6b7280', padding: '10px 24px', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: '600', cursor: hasChanges && !saving ? 'pointer' : 'not-allowed', opacity: saving ? 0.6 : 1 }}>Save Changes</button>
-            </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              onClick={handleClose}
+              disabled={saving}
+              style={{
+                backgroundColor: "#64748b",
+                color: "white",
+                padding: isMobile ? "12px 14px" : "10px 18px",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 900,
+                cursor: saving ? "not-allowed" : "pointer",
+                opacity: saving ? 0.7 : 1,
+                flex: isMobile ? 1 : "auto",
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+              style={{
+                backgroundColor: hasChanges ? "#10b981" : "#cbd5e1",
+                color: hasChanges ? "white" : "#475569",
+                padding: isMobile ? "12px 14px" : "10px 18px",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 900,
+                cursor: hasChanges && !saving ? "pointer" : "not-allowed",
+                opacity: saving ? 0.7 : 1,
+                flex: isMobile ? 1 : "auto",
+              }}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

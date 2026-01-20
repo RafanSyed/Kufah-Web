@@ -11,6 +11,7 @@ import ApiService from "../../services/ApiService";
 import CreateClassModal from "../../components/CreateClassModal";
 import CreateStudentModal from "../../components/CreateStudentModal";
 import AddStudentModal from "../../components/AddStudentModal";
+import NoSchoolCalendarModal from "../../components/NoSchoolCalendarModal";
 
 export default function Home() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function Home() {
   const [openCreateClassModal, setOpenCreateClassModal] = React.useState(false);
   const [openCreateStudentModal, setOpenCreateStudentModal] = React.useState(false);
   const [openAddStudentModal, setOpenAddStudentModal] = React.useState(false);
+  const [openNoSchoolCalendar, setOpenNoSchoolCalendar] = React.useState(false);
 
   const [allStudents, setAllStudents] = React.useState<any[]>([]);
 
@@ -122,7 +124,7 @@ export default function Home() {
 
   return (
     <div style={{ backgroundColor: "#FFF", minHeight: "100vh", padding: "40px 20px" }}>
-      {/* Header row: title + Home button */}
+      {/* Header row: title + Calendar/Home buttons */}
       <Box
         sx={{
           display: "flex",
@@ -143,19 +145,35 @@ export default function Home() {
           TEACHER DASHBOARD
         </h1>
 
-        <Button
-          variant="outlined"
-          sx={{
-            borderColor: "#191970",
-            color: "#191970",
-            textTransform: "none",
-            fontFamily: "comfortaa",
-            "&:hover": { borderColor: "#000080", backgroundColor: "#f3f6ff" },
-          }}
-          onClick={() => router.push("/pages/dashboard")}
-        >
-          Home
-        </Button>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            sx={{
+              borderColor: "#191970",
+              color: "#191970",
+              textTransform: "none",
+              fontFamily: "comfortaa",
+              "&:hover": { borderColor: "#000080", backgroundColor: "#f3f6ff" },
+            }}
+            onClick={() => setOpenNoSchoolCalendar(true)}
+          >
+            Calendar
+          </Button>
+
+          <Button
+            variant="outlined"
+            sx={{
+              borderColor: "#191970",
+              color: "#191970",
+              textTransform: "none",
+              fontFamily: "comfortaa",
+              "&:hover": { borderColor: "#000080", backgroundColor: "#f3f6ff" },
+            }}
+            onClick={() => router.push("/pages/dashboard")}
+          >
+            Home
+          </Button>
+        </Box>
       </Box>
 
       {/* Tabs */}
@@ -231,6 +249,11 @@ export default function Home() {
         allStudents={allStudents}
         classesData={classesData}
         onAdded={fetchClassesData}
+      />
+
+      <NoSchoolCalendarModal
+        open={openNoSchoolCalendar}
+        onClose={() => setOpenNoSchoolCalendar(false)}
       />
     </div>
   );

@@ -3,14 +3,19 @@
 export const dynamic = "force-dynamic";
 import * as React from "react";
 import { Tabs, Tab, Box, Button } from "@mui/material";
+import { useRouter } from "next/navigation";
+
 import ClassTabsGrid from "../../components/TeacherTable";
 import ApiService from "../../services/ApiService";
 
 import CreateClassModal from "../../components/CreateClassModal";
 import CreateStudentModal from "../../components/CreateStudentModal";
 import AddStudentModal from "../../components/AddStudentModal";
+import NoSchoolCalendarModal from "../../components/NoSchoolCalendarModal";
 
 export default function Home() {
+  const router = useRouter();
+
   const [classesData, setClassesData] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [selectedTab, setSelectedTab] = React.useState(0);
@@ -19,6 +24,7 @@ export default function Home() {
   const [openCreateClassModal, setOpenCreateClassModal] = React.useState(false);
   const [openCreateStudentModal, setOpenCreateStudentModal] = React.useState(false);
   const [openAddStudentModal, setOpenAddStudentModal] = React.useState(false);
+  const [openNoSchoolCalendar, setOpenNoSchoolCalendar] = React.useState(false);
 
   const [allStudents, setAllStudents] = React.useState<any[]>([]);
 
@@ -47,9 +53,10 @@ export default function Home() {
               const infoResp = await ApiService.get(`/students/${s.studentId}`);
               const info = infoResp.data;
 
-              const attendance = await ApiService.get(`/attendance/student/${s.studentId}/class/${cls.id}`);
+              const attendance = await ApiService.get(
+                `/attendance/student/${s.studentId}/class/${cls.id}`
+              );
 
-              // Count by status
               const counts = attendance.reduce(
                 (acc: any, a: any) => {
                   switch (a.status) {
@@ -117,21 +124,66 @@ export default function Home() {
 
   return (
     <div style={{ backgroundColor: "#FFF", minHeight: "100vh", padding: "40px 20px" }}>
-      <h1
-        style={{
-          fontFamily: "comfortaa",
-          fontWeight: "normal",
-          fontSize: "2.5rem",
-          color: "#191970",
-          textAlign: "center",
+      {/* Header row: title + Calendar/Home buttons */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
         }}
       >
-        TEACHER DASHBOARD
-      </h1>
+        <h1
+          style={{
+            fontFamily: "comfortaa",
+            fontWeight: "normal",
+            fontSize: "2.5rem",
+            color: "#191970",
+            margin: 0,
+          }}
+        >
+          TEACHER DASHBOARD
+        </h1>
+
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            sx={{
+              borderColor: "#191970",
+              color: "#191970",
+              textTransform: "none",
+              fontFamily: "comfortaa",
+              "&:hover": { borderColor: "#000080", backgroundColor: "#f3f6ff" },
+            }}
+            onClick={() => setOpenNoSchoolCalendar(true)}
+          >
+            Calendar
+          </Button>
+
+          <Button
+            variant="outlined"
+            sx={{
+              borderColor: "#191970",
+              color: "#191970",
+              textTransform: "none",
+              fontFamily: "comfortaa",
+              "&:hover": { borderColor: "#000080", backgroundColor: "#f3f6ff" },
+            }}
+            onClick={() => router.push("/pages/dashboard")}
+          >
+            Home
+          </Button>
+        </Box>
+      </Box>
 
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mt: 3 }}>
-        <Tabs value={selectedTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mt: 1 }}>
+        <Tabs
+          value={selectedTab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
           {classesData.map((cls, i) => (
             <Tab key={i} label={cls.className} />
           ))}
@@ -146,7 +198,15 @@ export default function Home() {
       )}
 
       {/* Buttons */}
-      <Box sx={{ mt: 3, textAlign: "center", display: "flex", justifyContent: "center", gap: 2 }}>
+      <Box
+        sx={{
+          mt: 3,
+          textAlign: "center",
+          display: "flex",
+          justifyContent: "center",
+          gap: 2,
+        }}
+      >
         <Button
           variant="contained"
           sx={{ backgroundColor: "#191970", "&:hover": { backgroundColor: "#000080" } }}
@@ -189,6 +249,11 @@ export default function Home() {
         allStudents={allStudents}
         classesData={classesData}
         onAdded={fetchClassesData}
+      />
+
+      <NoSchoolCalendarModal
+        open={openNoSchoolCalendar}
+        onClose={() => setOpenNoSchoolCalendar(false)}
       />
     </div>
   );

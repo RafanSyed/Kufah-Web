@@ -37,7 +37,7 @@ export default function HomePage() {
             </button>
           </Link>
 
-          {/* Events 
+          {/* Events */}
           <Link href="/pages/events" className="group">
             <button
               type="button"
@@ -55,9 +55,9 @@ export default function HomePage() {
                 ➜
               </span>
             </button>
-          </Link> */}
+          </Link> 
 
-          {/* Student Questions 
+          {/* Student Questions */}
           <Link href="/pages/studentManagement" className="group">
             <button
               type="button"
@@ -75,7 +75,7 @@ export default function HomePage() {
                 ➜
               </span>
             </button>
-          </Link> */}
+          </Link> 
         </div>
       </div>
     </div>

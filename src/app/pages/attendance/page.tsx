@@ -1,4 +1,4 @@
-'use client';
+"use client";
 export const dynamic = "force-dynamic";
 
 import React, { useEffect, useState, Suspense } from "react";
@@ -14,15 +14,19 @@ type ClassItem = {
   token: string;
 };
 
+const GOLD = "#FFD700";
+const BLUE = "#191970";
+
 const AttendanceContent: React.FC = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const link = searchParams.get("token"); // the token from the URL query
+  const link = searchParams.get("token");
 
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [studentName, setStudentName] = useState<string>("");
+  const [attendanceDate, setAttendanceDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [attendanceDate, setAttendanceDate] = useState<string>("");
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -30,41 +34,13 @@ const AttendanceContent: React.FC = () => {
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
+  const isMobile = windowWidth <= 640;
+
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  const getResponsive = () => {
-    if (windowWidth <= 640) {
-      return {
-        titleFont: "1.8rem",
-        homeBtn: { padding: "8px 20px", fontSize: "18px", minWidth: "110px", minHeight: "50px" },
-        homeIcon: { width: "28px", height: "28px" },
-        classBox: { fontSize: "16px", width: "200px", padding: "12px 0" },
-        attBtn: { fontSize: "16px", padding: "10px 20px" },
-      };
-    } else if (windowWidth <= 1024) {
-      return {
-        titleFont: "2.2rem",
-        homeBtn: { padding: "12px 28px", fontSize: "22px", minWidth: "140px", minHeight: "60px" },
-        homeIcon: { width: "40px", height: "40px" },
-        classBox: { fontSize: "20px", width: "240px", padding: "14px 0" },
-        attBtn: { fontSize: "18px", padding: "14px 28px" },
-      };
-    } else {
-      return {
-        titleFont: "2.8rem",
-        homeBtn: { padding: "15px 35px", fontSize: "26px", minWidth: "170px", minHeight: "70px" },
-        homeIcon: { width: "48px", height: "48px" },
-        classBox: { fontSize: "24px", width: "300px", padding: "18px 0" },
-        attBtn: { fontSize: "20px", padding: "18px 36px" },
-      };
-    }
-  };
-
-  const sizes = getResponsive();
 
   useEffect(() => {
     if (!link) {
@@ -75,14 +51,11 @@ const AttendanceContent: React.FC = () => {
 
     const initializeAttendance = async () => {
       try {
-        // Extract token safely from a full link if needed
         let token = link;
         try {
           const parsed = new URL(link);
           token = parsed.searchParams.get("token") || link;
-        } catch (err) {
-          // If link is already a token, ignore
-        }
+        } catch {}
 
         const response = await ApiService.get(`/attendance/email/${encodeURIComponent(token)}`);
         const records = response.records;
@@ -93,16 +66,30 @@ const AttendanceContent: React.FC = () => {
           return;
         }
 
-        // Use the date from the first record for header
         const firstDate = new Date(records[0].date);
-        setAttendanceDate(`${firstDate.getMonth() + 1}/${firstDate.getDate()}/${firstDate.getFullYear()}`);
+        setAttendanceDate(
+          `${firstDate.getMonth() + 1}/${firstDate.getDate()}/${firstDate.getFullYear()}`
+        );
+
+        const firstStudentId = records[0]?.student_id;
+        if (firstStudentId) {
+          try {
+            const studentResp = await ApiService.get(`/students/${firstStudentId}`);
+            const s = studentResp?.data ?? studentResp;
+            const full = `${s?.firstName ?? ""} ${s?.lastName ?? ""}`.trim();
+            setStudentName(full || "Student");
+          } catch {
+            setStudentName("Student");
+          }
+        }
 
         const classesWithNames: ClassItem[] = await Promise.all(
           records.map(async (row: any) => {
             const cls = await ApiService.get(`/classes/${row.class_id}`);
+            const c = cls?.data ?? cls;
             return {
               id: row.class_id,
-              name: cls.name,
+              name: c.name,
               attendanceId: row.id,
               status: row.status,
               token: row.token,
@@ -130,37 +117,69 @@ const AttendanceContent: React.FC = () => {
       const updated = await ApiService.put(`/attendance/${cls.attendanceId}`, { status });
 
       setClasses((prev) =>
-        prev.map((c) =>
-          c.id === classId ? { ...c, status: updated.status } : c
-        )
+        prev.map((c) => (c.id === classId ? { ...c, status: updated.status } : c))
       );
 
-      // ✅ success popup
       setSuccessMessage("Attendance Updated");
-      setTimeout(() => setSuccessMessage(null), 2000);
+      setTimeout(() => setSuccessMessage(null), 1800);
     } catch (err: any) {
       console.error("Failed to update attendance:", err);
     }
   };
 
-  if (loading) return <div className="p-4">Loading...</div>;
-  if (error) return <div className="p-4 text-red-600">{error}</div>;
+  const StatusButton = ({
+    active,
+    label,
+    onClick,
+  }: {
+    active: boolean;
+    label: string;
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      style={{
+        borderRadius: 9999,
+        fontWeight: 800,
+        cursor: "pointer",
+        border: `2px solid ${BLUE}`,
+        color: active ? GOLD : BLUE,                 // ✅ gold when selected
+        backgroundColor: active ? BLUE : "transparent",
+        transition: "all 0.15s ease-in-out",
+        padding: isMobile ? "12px 14px" : "14px 20px",
+        fontSize: isMobile ? "16px" : "18px",
+        minWidth: isMobile ? "48%" : "140px",
+        boxShadow: active ? "0 6px 16px rgba(25,25,112,0.25)" : "none",
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  if (loading) return <div style={{ padding: 16 }}>Loading...</div>;
+  if (error) return <div style={{ padding: 16, color: "#b91c1c" }}>{error}</div>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto relative">
-      {/* ✅ success popup */}
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(180deg, #f7f9ff 0%, #ffffff 60%)",
+        padding: isMobile ? "16px" : "28px",
+        fontFamily: "Comfortaa, system-ui, -apple-system, Segoe UI, Roboto, Arial",
+      }}
+    >
       {successMessage && (
         <div
           style={{
             position: "fixed",
-            top: "20px",
-            right: "20px",
+            top: 18,
+            right: 18,
             backgroundColor: "#d1fae5",
             color: "#065f46",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            fontWeight: "bold",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+            padding: "10px 16px",
+            borderRadius: 10,
+            fontWeight: 700,
+            boxShadow: "0 10px 18px rgba(0,0,0,0.12)",
             zIndex: 9999,
           }}
         >
@@ -168,102 +187,165 @@ const AttendanceContent: React.FC = () => {
         </div>
       )}
 
-      <div className="relative w-full mb-12">
-        <h1
-          style={{
-            fontFamily: "Comfortaa",
-            fontWeight: "bold",
-            fontSize: sizes.titleFont,
-            color: "#191970",
-            textAlign: "center",
-          }}
-        >
-          {attendanceDate ? `${attendanceDate} Attendance` : "ATTENDANCE"}
-        </h1>
+      {/* Top bar */}
+      <div
+        style={{
+          maxWidth: 980,
+          margin: "0 auto",
+          display: "flex",
+          alignItems: isMobile ? "flex-start" : "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: isMobile ? 12 : 18,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontWeight: 900,
+              color: BLUE,
+              fontSize: isMobile ? 20 : 24,
+              lineHeight: 1.1,
+            }}
+          >
+            {studentName ? `Hi, ${studentName}` : "Hi"}
+          </div>
+
+          <div style={{ color: "#374151", fontSize: 13, opacity: 0.9, marginTop: 4 }}>
+            {attendanceDate ? `Date: ${attendanceDate}` : ""}
+          </div>
+
+          <div style={{ color: "#374151", fontSize: 13, opacity: 0.8, marginTop: 2 }}>
+            Mark your attendance for each class below.
+          </div>
+        </div>
 
         <button
           onClick={() => router.push(`/pages/studentDashboard?token=${link}`)}
-          className="flex items-center gap-4 bg-[#191970] rounded-full shadow-xl hover:bg-blue-900 transition-all duration-200 ease-in-out"
           style={{
-            position: windowWidth > 640 ? "absolute" : "static",
-            top: windowWidth > 640 ? "-10px" : "auto",
-            right: windowWidth > 640 ? "20px" : "auto",
-            marginTop: windowWidth <= 640 ? "1rem" : "0",
-            ...sizes.homeBtn,
-            color: "white",
-            marginLeft: windowWidth <= 640 ? "auto" : "0",
-            marginRight: windowWidth <= 640 ? "auto" : "0",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            backgroundColor: BLUE,
+            color: GOLD,                               // ✅ gold text
+            border: "none",
+            borderRadius: 9999,
+            padding: isMobile ? "10px 16px" : "12px 18px",
+            fontWeight: 900,
+            cursor: "pointer",
+            boxShadow: "0 10px 18px rgba(25,25,112,0.25)",
+            whiteSpace: "nowrap",
           }}
         >
-          <Home style={{ ...sizes.homeIcon, color: "white" }} />
-          <span style={{ fontWeight: "bold", color: "white" }}>Home</span>
+          <Home style={{ width: isMobile ? 20 : 22, height: isMobile ? 20 : 22, color: GOLD }} />
+          Home
         </button>
       </div>
 
-      {classes.length === 0 ? (
-        <div className="text-center text-gray-600 p-4">No classes found.</div>
-      ) : (
-        <div className="flex flex-col gap-10">
-          {classes.map((cls) => (
-            <div
-              key={cls.id}
-              className="flex items-center justify-between p-6"
-              style={{
-                border: "3px solid #191970",
-                borderRadius: "8px",
-                fontFamily: "Comfortaa, sans-serif",
-                flexWrap: windowWidth <= 640 ? "wrap" : "nowrap",
-              }}
-            >
+      {/* Cards */}
+      <div style={{ maxWidth: 980, margin: "0 auto" }}>
+        {classes.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#4b5563", padding: 16 }}>
+            No classes found.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 14 : 18 }}>
+            {classes.map((cls) => (
               <div
+                key={cls.id}
                 style={{
-                  backgroundColor: "#191970",
-                  color: "white",
-                  fontWeight: "bold",
-                  textAlign: "center",
-                  width: windowWidth <= 640 ? "100%" : sizes.classBox.width,
-                  padding: sizes.classBox.padding,
-                  fontSize: sizes.classBox.fontSize,
+                  border: "2px solid rgba(25,25,112,0.22)",
+                  borderRadius: 16,
+                  backgroundColor: "white",
+                  boxShadow: "0 10px 18px rgba(0,0,0,0.06)",
+                  overflow: "hidden",
                 }}
               >
-                {cls.name}
-              </div>
-
-              <div className="flex flex-1 justify-around ml-6 flex-wrap gap-2">
-                {["In Person", "Online", "Recording"].map((statusOption) => (
-                  <button
-                    key={statusOption}
-                    onClick={() =>
-                      markAttendance(cls.id, statusOption as ClassItem["status"])
-                    }
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    alignItems: isMobile ? "stretch" : "center",
+                    justifyContent: "space-between",
+                    gap: isMobile ? 12 : 18,
+                    padding: isMobile ? 14 : 18,
+                  }}
+                >
+                  <div
                     style={{
-                      borderRadius: "9999px",
-                      fontWeight: "700",
-                      cursor: "pointer",
-                      border: "3px solid #191970",
-                      color:
-                        cls.status === statusOption ? "#FFD700" : "#191970",
-                      backgroundColor:
-                        cls.status === statusOption ? "#191970" : "transparent",
-                      transition: "all 0.2s ease-in-out",
-                      ...sizes.attBtn,
+                      backgroundColor: BLUE,
+                      color: GOLD,                         // ✅ gold class name text
+                      fontWeight: 900,
+                      textAlign: "center",
+                      borderRadius: 12,
+                      padding: isMobile ? "12px 12px" : "14px 18px",
+                      fontSize: isMobile ? 18 : 20,
+                      minWidth: isMobile ? "100%" : 220,
+                      letterSpacing: 0.2,
                     }}
                   >
-                    {statusOption}
-                  </button>
-                ))}
+                    {cls.name}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      justifyContent: isMobile ? "space-between" : "flex-end",
+                      flex: 1,
+                    }}
+                  >
+                    <StatusButton
+                      label="In Person"
+                      active={cls.status === "In Person"}
+                      onClick={() => markAttendance(cls.id, "In Person")}
+                    />
+                    <StatusButton
+                      label="Online"
+                      active={cls.status === "Online"}
+                      onClick={() => markAttendance(cls.id, "Online")}
+                    />
+                    <StatusButton
+                      label="Recording"
+                      active={cls.status === "Recording"}
+                      onClick={() => markAttendance(cls.id, "Recording")}
+                    />
+                    <StatusButton
+                      label="Absent"
+                      active={cls.status === "Absent"}
+                      onClick={() => markAttendance(cls.id, "Absent")}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: isMobile ? "10px 14px" : "10px 18px",
+                    borderTop: "1px solid rgba(25,25,112,0.12)",
+                    color: "#374151",
+                    fontSize: 13,
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>
+                    Selected: <b style={{ color: BLUE }}>{cls.status}</b>
+                  </span>
+                  <span style={{ opacity: 0.7 }}>Tap to update</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const LoadingFallback: React.FC = () => (
-  <div className="p-6 max-w-4xl mx-auto">
-    <div className="text-center">Loading attendance...</div>
+  <div style={{ padding: 24, maxWidth: 980, margin: "0 auto" }}>
+    <div style={{ textAlign: "center" }}>Loading attendance...</div>
   </div>
 );
 

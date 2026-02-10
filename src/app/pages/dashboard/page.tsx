@@ -37,7 +37,7 @@ export default function HomePage() {
             </button>
           </Link>
 
-          {/* Events 
+          {/* Events */}
           <Link href="/pages/events" className="group">
             <button
               type="button"
@@ -55,9 +55,9 @@ export default function HomePage() {
                 ➜
               </span>
             </button>
-          </Link> */}
+          </Link> 
 
-          {/* Student Questions 
+          {/* Student Questions */}
           <Link href="/pages/studentManagement" className="group">
             <button
               type="button"
@@ -75,7 +75,27 @@ export default function HomePage() {
                 ➜
               </span>
             </button>
-          </Link> */}
+          </Link> 
+
+          {/* Ibadah Management */}
+          <Link href="/pages/IbadahManagement" className="group">
+            <button
+              type="button"
+              className="w-full rounded-2xl bg-white shadow-md border border-slate-200 px-5 py-4 text-left flex items-center justify-between transition-all hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div>
+                <p className="text-sm font-semibold text-kufahBlue">
+                  Ibadah Managment
+                </p>
+                <p className="text-xs text-slate-500">
+                  Review student Ibadah goals
+                </p>
+              </div>
+              <span className="text-kufahBlue transition-transform group-hover:translate-x-1">
+                ➜
+              </span>
+            </button>
+          </Link> 
         </div>
       </div>
     </div>

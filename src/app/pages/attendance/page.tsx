@@ -29,6 +29,7 @@ const AttendanceContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
   const [windowWidth, setWindowWidth] = useState<number>(
     typeof window !== "undefined" ? window.innerWidth : 1200
@@ -127,14 +128,34 @@ const AttendanceContent: React.FC = () => {
     }
   };
 
+  const deleteAttendance = async (classId: number) => {
+    try {
+      const cls = classes.find((c) => c.id === classId);
+      if (!cls) return;
+
+      await ApiService.delete(`/attendance/${cls.attendanceId}`);
+
+      setClasses((prev) => prev.filter((c) => c.id !== classId));
+
+      setSuccessMessage("Attendance Deleted");
+      setTimeout(() => setSuccessMessage(null), 1800);
+      setShowDeleteConfirm(null);
+    } catch (err: any) {
+      console.error("Failed to delete attendance:", err);
+      setShowDeleteConfirm(null);
+    }
+  };
+
   const StatusButton = ({
     active,
     label,
     onClick,
+    isDelete = false,
   }: {
     active: boolean;
     label: string;
     onClick: () => void;
+    isDelete?: boolean;
   }) => (
     <button
       onClick={onClick}
@@ -142,8 +163,8 @@ const AttendanceContent: React.FC = () => {
         borderRadius: 9999,
         fontWeight: 800,
         cursor: "pointer",
-        border: `2px solid ${BLUE}`,
-        color: active ? GOLD : BLUE,                 // ✅ gold when selected
+        border: isDelete ? "2px solid #dc2626" : `2px solid ${BLUE}`,
+        color: isDelete ? "#dc2626" : active ? GOLD : BLUE,
         backgroundColor: active ? BLUE : "transparent",
         transition: "all 0.15s ease-in-out",
         padding: isMobile ? "12px 14px" : "14px 20px",
@@ -158,6 +179,53 @@ const AttendanceContent: React.FC = () => {
 
   if (loading) return <div style={{ padding: 16 }}>Loading...</div>;
   if (error) return <div style={{ padding: 16, color: "#b91c1c" }}>{error}</div>;
+
+  // No classes state
+  if (classes.length === 0) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(180deg, #f7f9ff 0%, #ffffff 60%)",
+          padding: isMobile ? "16px" : "28px",
+          fontFamily: "Comfortaa, system-ui, -apple-system, Segoe UI, Roboto, Arial",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ textAlign: "center", maxWidth: 500 }}>
+          <div
+            style={{
+              fontSize: isMobile ? 48 : 64,
+              marginBottom: 20,
+            }}
+          >
+            📚
+          </div>
+          <div
+            style={{
+              fontSize: isMobile ? 28 : 36,
+              fontWeight: 900,
+              color: BLUE,
+              marginBottom: 12,
+            }}
+          >
+            Sorry, No Classes Today
+          </div>
+          <div
+            style={{
+              fontSize: isMobile ? 16 : 18,
+              color: "#4b5563",
+              lineHeight: 1.6,
+            }}
+          >
+            {studentName ? `${studentName}, you` : "You"} don't have any classes scheduled for {attendanceDate || "today"}.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -184,6 +252,92 @@ const AttendanceContent: React.FC = () => {
           }}
         >
           ✅ {successMessage}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm !== null && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: 16,
+          }}
+          onClick={() => setShowDeleteConfirm(null)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              padding: isMobile ? "24px" : "32px",
+              maxWidth: 400,
+              width: "100%",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                fontSize: isMobile ? 20 : 24,
+                fontWeight: 900,
+                color: "#dc2626",
+                marginBottom: 12,
+                textAlign: "center",
+              }}
+            >
+              Are you sure?
+            </div>
+            <div
+              style={{
+                fontSize: 15,
+                color: "#4b5563",
+                marginBottom: 24,
+                textAlign: "center",
+              }}
+            >
+              You can't undo this. This will permanently delete this attendance record.
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 9999,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  border: `2px solid ${BLUE}`,
+                  color: BLUE,
+                  backgroundColor: "transparent",
+                  fontSize: 16,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteAttendance(showDeleteConfirm)}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 9999,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  border: "2px solid #dc2626",
+                  color: "white",
+                  backgroundColor: "#dc2626",
+                  fontSize: 16,
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -244,100 +398,100 @@ const AttendanceContent: React.FC = () => {
 
       {/* Cards */}
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
-        {classes.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#4b5563", padding: 16 }}>
-            No classes found.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 14 : 18 }}>
-            {classes.map((cls) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 14 : 18 }}>
+          {classes.map((cls) => (
+            <div
+              key={cls.id}
+              style={{
+                border: "2px solid rgba(25,25,112,0.22)",
+                borderRadius: 16,
+                backgroundColor: "white",
+                boxShadow: "0 10px 18px rgba(0,0,0,0.06)",
+                overflow: "hidden",
+              }}
+            >
               <div
-                key={cls.id}
                 style={{
-                  border: "2px solid rgba(25,25,112,0.22)",
-                  borderRadius: 16,
-                  backgroundColor: "white",
-                  boxShadow: "0 10px 18px rgba(0,0,0,0.06)",
-                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  alignItems: isMobile ? "stretch" : "center",
+                  justifyContent: "space-between",
+                  gap: isMobile ? 12 : 18,
+                  padding: isMobile ? 14 : 18,
                 }}
               >
                 <div
                   style={{
-                    display: "flex",
-                    flexDirection: isMobile ? "column" : "row",
-                    alignItems: isMobile ? "stretch" : "center",
-                    justifyContent: "space-between",
-                    gap: isMobile ? 12 : 18,
-                    padding: isMobile ? 14 : 18,
+                    backgroundColor: BLUE,
+                    color: GOLD,
+                    fontWeight: 900,
+                    textAlign: "center",
+                    borderRadius: 12,
+                    padding: isMobile ? "12px 12px" : "14px 18px",
+                    fontSize: isMobile ? 18 : 20,
+                    minWidth: isMobile ? "100%" : 220,
+                    letterSpacing: 0.2,
                   }}
                 >
-                  <div
-                    style={{
-                      backgroundColor: BLUE,
-                      color: GOLD,                         // ✅ gold class name text
-                      fontWeight: 900,
-                      textAlign: "center",
-                      borderRadius: 12,
-                      padding: isMobile ? "12px 12px" : "14px 18px",
-                      fontSize: isMobile ? 18 : 20,
-                      minWidth: isMobile ? "100%" : 220,
-                      letterSpacing: 0.2,
-                    }}
-                  >
-                    {cls.name}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 10,
-                      justifyContent: isMobile ? "space-between" : "flex-end",
-                      flex: 1,
-                    }}
-                  >
-                    <StatusButton
-                      label="In Person"
-                      active={cls.status === "In Person"}
-                      onClick={() => markAttendance(cls.id, "In Person")}
-                    />
-                    <StatusButton
-                      label="Online"
-                      active={cls.status === "Online"}
-                      onClick={() => markAttendance(cls.id, "Online")}
-                    />
-                    <StatusButton
-                      label="Recording"
-                      active={cls.status === "Recording"}
-                      onClick={() => markAttendance(cls.id, "Recording")}
-                    />
-                    <StatusButton
-                      label="Absent"
-                      active={cls.status === "Absent"}
-                      onClick={() => markAttendance(cls.id, "Absent")}
-                    />
-                  </div>
+                  {cls.name}
                 </div>
 
                 <div
                   style={{
-                    padding: isMobile ? "10px 14px" : "10px 18px",
-                    borderTop: "1px solid rgba(25,25,112,0.12)",
-                    color: "#374151",
-                    fontSize: 13,
                     display: "flex",
-                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    justifyContent: isMobile ? "space-between" : "flex-end",
+                    flex: 1,
                   }}
                 >
-                  <span>
-                    Selected: <b style={{ color: BLUE }}>{cls.status}</b>
-                  </span>
-                  <span style={{ opacity: 0.7 }}>Tap to update</span>
+                  <StatusButton
+                    label="In Person"
+                    active={cls.status === "In Person"}
+                    onClick={() => markAttendance(cls.id, "In Person")}
+                  />
+                  <StatusButton
+                    label="Online"
+                    active={cls.status === "Online"}
+                    onClick={() => markAttendance(cls.id, "Online")}
+                  />
+                  <StatusButton
+                    label="Recording"
+                    active={cls.status === "Recording"}
+                    onClick={() => markAttendance(cls.id, "Recording")}
+                  />
+                  <StatusButton
+                    label="Absent"
+                    active={cls.status === "Absent"}
+                    onClick={() => markAttendance(cls.id, "Absent")}
+                  />
+                  <StatusButton
+                    label="No Class"
+                    active={false}
+                    onClick={() => setShowDeleteConfirm(cls.id)}
+                    isDelete={true}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              <div
+                style={{
+                  padding: isMobile ? "10px 14px" : "10px 18px",
+                  borderTop: "1px solid rgba(25,25,112,0.12)",
+                  color: "#374151",
+                  fontSize: 13,
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>
+                  Selected: <b style={{ color: BLUE }}>{cls.status}</b>
+                </span>
+                <span style={{ opacity: 0.7 }}>Tap to update</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

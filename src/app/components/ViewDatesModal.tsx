@@ -6,7 +6,7 @@ import ApiService from "../services/ApiService";
 interface Attendance {
   id: number;
   date: string;
-  status: "Absent" | "In Person" | "Online" | "Recording";
+  status: "Absent" | "In Person" | "Online" | "Recording" | "No Class";
   student_id: number;
   class_id: number;
 }
@@ -21,8 +21,9 @@ interface AttendanceModalProps {
 
 const BLUE = "#191970";
 const GOLD = "#FFD700";
+const RED = "#dc2626";
 
-const STATUS_OPTIONS = ["In Person", "Online", "Recording", "Absent"] as const;
+const STATUS_OPTIONS = ["In Person", "Online", "Recording", "Absent", "No Class"] as const;
 
 const statusColor = (status: (typeof STATUS_OPTIONS)[number]) => {
   switch (status) {
@@ -34,6 +35,8 @@ const statusColor = (status: (typeof STATUS_OPTIONS)[number]) => {
       return "#8b5cf6";
     case "Absent":
       return "#ef4444";
+    case "No Class":
+      return RED;
     default:
       return BLUE;
   }
@@ -75,8 +78,14 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
     setLoading(true);
     try {
       const data = await ApiService.get(`/attendance/student/${studentId}/class/${classId}`);
-      setAttendance(data);
-      setOriginalAttendance(JSON.parse(JSON.stringify(data)));
+      
+      // Sort by date descending (newest first)
+      const sorted = data.sort((a: Attendance, b: Attendance) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      
+      setAttendance(sorted);
+      setOriginalAttendance(JSON.parse(JSON.stringify(sorted)));
       setHasChanges(false);
     } catch (err) {
       console.error(err);
@@ -222,77 +231,92 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
           ) : isMobile ? (
             // ✅ Mobile: cards
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {attendance.map((row) => (
-                <div
-                  key={row.id}
-                  style={{
-                    border: "1px solid rgba(25,25,112,0.16)",
-                    borderRadius: 16,
-                    backgroundColor: "white",
-                    boxShadow: "0 10px 18px rgba(25,25,112,0.06)",
-                    overflow: "hidden",
-                  }}
-                >
+              {attendance.map((row) => {
+                const isNoClass = row.status === "No Class";
+                return (
                   <div
+                    key={row.id}
                     style={{
-                      padding: "12px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      borderBottom: "1px solid rgba(25,25,112,0.10)",
-                      backgroundColor: "rgba(25,25,112,0.03)",
+                      border: `1px solid ${isNoClass ? "rgba(220,38,38,0.16)" : "rgba(25,25,112,0.16)"}`,
+                      borderRadius: 16,
+                      backgroundColor: "white",
+                      boxShadow: `0 10px 18px ${isNoClass ? "rgba(220,38,38,0.06)" : "rgba(25,25,112,0.06)"}`,
+                      overflow: "hidden",
                     }}
                   >
-                    <div style={{ fontWeight: 900, color: BLUE, fontSize: 14 }}>
-                      Date: {formatMMDD(row.date)}
-                    </div>
-                    <span
+                    <div
                       style={{
-                        fontSize: 12,
-                        fontWeight: 900,
-                        padding: "6px 10px",
-                        borderRadius: 9999,
-                        backgroundColor: row.status === "Absent" ? "#fee2e2" : "rgba(25,25,112,0.06)",
-                        color: row.status === "Absent" ? "#b91c1c" : BLUE,
-                        border: "1px solid rgba(25,25,112,0.14)",
+                        padding: "12px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: `1px solid ${isNoClass ? "rgba(220,38,38,0.10)" : "rgba(25,25,112,0.10)"}`,
+                        backgroundColor: isNoClass ? "rgba(220,38,38,0.03)" : "rgba(25,25,112,0.03)",
                       }}
                     >
-                      {row.status}
-                    </span>
-                  </div>
+                      <div style={{ fontWeight: 900, color: isNoClass ? RED : BLUE, fontSize: 14 }}>
+                        Date: {formatMMDD(row.date)}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 900,
+                          padding: "6px 10px",
+                          borderRadius: 9999,
+                          backgroundColor: 
+                            row.status === "Absent" ? "#fee2e2" : 
+                            row.status === "No Class" ? "#fee2e2" : 
+                            "rgba(25,25,112,0.06)",
+                          color: 
+                            row.status === "Absent" ? "#b91c1c" : 
+                            row.status === "No Class" ? RED : 
+                            BLUE,
+                          border: `1px solid ${isNoClass ? "rgba(220,38,38,0.14)" : "rgba(25,25,112,0.14)"}`,
+                        }}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
 
-                  <div style={{ padding: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {STATUS_OPTIONS.map((opt) => {
-                      const active = row.status === opt;
-                      return (
-                        <button
-                          key={opt}
-                          onClick={() => handleStatusChange(row.id, opt)}
-                          style={{
-                            flex: "1 1 46%",
-                            padding: "11px 10px",
-                            borderRadius: 9999,
-                            fontWeight: 900,
-                            fontSize: 14,
-                            cursor: "pointer",
-                            border: `2px solid ${active ? BLUE : "rgba(25,25,112,0.20)"}`,
-                            color: active ? GOLD : BLUE,
-                            backgroundColor: active ? BLUE : "rgba(25,25,112,0.04)",
-                            boxShadow: active ? "0 10px 18px rgba(25,25,112,0.18)" : "none",
-                            transition: "transform 0.08s ease, box-shadow 0.15s ease",
-                          }}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    <div style={{ padding: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {STATUS_OPTIONS.map((opt) => {
+                        const active = row.status === opt;
+                        const isNoClassOption = opt === "No Class";
+                        const borderColor = isNoClassOption ? RED : BLUE;
+                        const activeColor = isNoClassOption ? RED : BLUE;
+                        const activeFg = isNoClassOption ? "white" : GOLD;
+                        const inactiveFg = isNoClassOption ? RED : BLUE;
 
-                  <div style={{ padding: "10px 12px", fontSize: 12, color: "#64748b" }}>
-                    Tip: Tap one option above.
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => handleStatusChange(row.id, opt)}
+                            style={{
+                              flex: "1 1 46%",
+                              padding: "11px 10px",
+                              borderRadius: 9999,
+                              fontWeight: 900,
+                              fontSize: 14,
+                              cursor: "pointer",
+                              border: `2px solid ${borderColor}`,
+                              color: active ? activeFg : inactiveFg,
+                              backgroundColor: active ? activeColor : isNoClassOption ? "transparent" : "rgba(25,25,112,0.04)",
+                              boxShadow: active ? `0 10px 18px ${isNoClassOption ? "rgba(220,38,38,0.18)" : "rgba(25,25,112,0.18)"}` : "none",
+                              transition: "transform 0.08s ease, box-shadow 0.15s ease",
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ padding: "10px 12px", fontSize: 12, color: "#64748b" }}>
+                      Tip: Tap one option above.
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             // ✅ Desktop: table
@@ -327,6 +351,12 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
                       <td style={{ padding: "12px 14px", textAlign: "right" }}>
                         {STATUS_OPTIONS.map((opt) => {
                           const active = row.status === opt;
+                          const isNoClassOption = opt === "No Class";
+                          const borderColor = isNoClassOption ? RED : BLUE;
+                          const activeColor = isNoClassOption ? RED : BLUE;
+                          const activeFg = isNoClassOption ? "white" : GOLD;
+                          const inactiveFg = isNoClassOption ? RED : BLUE;
+
                           return (
                             <button
                               key={opt}
@@ -337,10 +367,10 @@ const AttendanceModal = ({ studentId, classId, isOpen, onClose, onSave }: Attend
                                 borderRadius: 9999,
                                 fontWeight: 900,
                                 cursor: "pointer",
-                                border: active ? `2px solid ${BLUE}` : "2px solid rgba(25,25,112,0.20)",
-                                color: active ? GOLD : BLUE,
-                                backgroundColor: active ? BLUE : "rgba(25,25,112,0.04)",
-                                boxShadow: active ? "0 10px 18px rgba(25,25,112,0.18)" : "none",
+                                border: `2px solid ${borderColor}`,
+                                color: active ? activeFg : inactiveFg,
+                                backgroundColor: active ? activeColor : isNoClassOption ? "transparent" : "rgba(25,25,112,0.04)",
+                                boxShadow: active ? `0 10px 18px ${isNoClassOption ? "rgba(220,38,38,0.18)" : "rgba(25,25,112,0.18)"}` : "none",
                                 transition: "transform 0.08s ease, box-shadow 0.15s ease",
                               }}
                             >

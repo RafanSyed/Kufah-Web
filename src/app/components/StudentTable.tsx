@@ -45,6 +45,11 @@ const StudentClassGrid: React.FC<Props> = ({ studentId }) => {
 
             const counts = attendance.reduce(
               (acc: any, a: any) => {
+                // Skip "No Class" entries entirely
+                if (a.status === "No Class") {
+                  return acc;
+                }
+                
                 switch (a.status) {
                   case "In Person": acc.inPerson += 1; break;
                   case "Online": acc.online += 1; break;

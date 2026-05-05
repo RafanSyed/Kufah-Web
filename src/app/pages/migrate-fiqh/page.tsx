@@ -35,6 +35,7 @@ const MigrateFiqhPage: React.FC = () => {
 
     const fetchStudent = async () => {
       try {
+        // 1. Resolve token → student_id
         const response = await ApiService.get(
           `/attendance/token/${encodeURIComponent(token)}`
         );
@@ -47,12 +48,24 @@ const MigrateFiqhPage: React.FC = () => {
           return;
         }
 
-        setStudentId(data.student_id);
-        setStudentName(data.student_name || "Student");
+        const studentId = data.student_id;
+        setStudentId(studentId);
 
-        // 2. Get dashboard link safely
+        // 2. Fetch student details (FIX)
+        try {
+          const studentRes = await ApiService.get(`/students/${studentId}`);
+          const student = studentRes?.data ?? studentRes;
+
+          const fullName = `${student?.firstName ?? ""} ${student?.lastName ?? ""}`.trim();
+          setStudentName(fullName || "Student");
+        } catch (err) {
+          console.error("Failed to fetch student details", err);
+          setStudentName("Student");
+        }
+
+        // 3. Get dashboard link
         const attendanceRes = await ApiService.get(
-          `/attendance/student/${data.student_id}`
+          `/attendance/student/${studentId}`
         );
 
         const records = attendanceRes?.data ?? attendanceRes;
